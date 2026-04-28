@@ -172,13 +172,17 @@ export class GroqClient implements LLMClient {
       model: this.model,
       messages: [
         {
-          role: 'assistant',
+          role: 'system',
+          content: 'You are an expert code reviewer. Return only valid JSON matching the requested review schema. Do not include any extra prose outside the JSON object.',
+        },
+        {
+          role: 'user',
           content: prompt,
         },
       ],
-      temperature: 5,
+      temperature: 1,
       max_completion_tokens: 8192,
-      top_p: 1.5,
+      top_p: 1,
       reasoning_effort: 'medium',
       stream: false,
     };
