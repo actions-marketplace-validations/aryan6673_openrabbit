@@ -15,7 +15,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
       - name: Locate README file
         run: |
@@ -33,13 +36,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Get latest version from README
+      - name: Fetch tags
+        run: git fetch --force --tags origin
+
+      - name: Get latest version from tags
         id: get_version
         run: |
-          # Extract version from badge, e.g., version-v0.0.1
-          if grep -q "version-v" "$README_FILE"; then
-            CURRENT_VERSION=$(grep -o "version-v[0-9]*\.[0-9]*\.[0-9]*" "$README_FILE" | head -1 | cut -d'-' -f2)
-          else
+          CURRENT_VERSION=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n 1)
+          if [ -z "$CURRENT_VERSION" ]; then
             CURRENT_VERSION="v0.0.0"
           fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
@@ -66,7 +70,7 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.NEW_VERSION }}
           name: Release ${{ env.NEW_VERSION }}
@@ -87,7 +91,7 @@ jobs:
             fi
             git add "$README_FILE"
             git commit -m "Update version badge to ${{ env.NEW_VERSION }}"
-            git push origin main
+            git push origin HEAD:${{ github.ref_name }}
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
