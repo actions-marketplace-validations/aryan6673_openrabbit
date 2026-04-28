@@ -1,7 +1,10 @@
-name: PR review
+name: Coderabbit PR review
 on:
   pull_request:
     types: [opened, reopened, edited, synchronize]
+env:
+  LLM_API_URL: https://api.groq.ai/v1
+  LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -16,6 +19,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           llm_provider: groq
-          llm_api_url: https://api.groq.ai/v1
-          llm_api_key: ${{ secrets.GROQ_API_KEY }}
           review_mode: both
