@@ -15,8 +15,11 @@ jobs:
           node-version: '20'
       - run: npm install
       - run: npm run build
-      - uses: ./
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          llm_provider: groq
-          review_mode: both
+      - name: Run OpenRabbit reviewer
+        run: node dist/action.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLM_API_URL: https://api.groq.ai/v1
+          LLM_MODEL: openai/gpt-oss-120b
+          REVIEW_MODE: both
