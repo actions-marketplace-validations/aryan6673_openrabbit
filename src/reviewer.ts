@@ -76,6 +76,7 @@ const promptTemplate = ({
   skippedFiles,
   reviewMode,
   toneMode,
+  additionalFiles,
 }: {
   title: string;
   body: string | null;
@@ -85,7 +86,10 @@ const promptTemplate = ({
   skippedFiles: string[];
   reviewMode: import('./types.js').ReviewMode;
   toneMode: ToneMode;
+  additionalFiles?: Array<{ path: string; content: string }>;
 }) => `You are an expert code reviewer embedded in a GitHub Action. Your job is to review pull requests with deep technical understanding, sharp judgment, and a human tone. You are NOT a linter. You think before you speak.
+
+Note: The reviewer will be run on the code checked out by CI. Do not assume runtime code differs from the diff you are given.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WRITING STYLE — SENIOR ENGINEER VOICE
@@ -287,6 +291,7 @@ Changed files and patches:
 ${changedFiles
   .map((file) => `File: ${file.path}\n${file.patch ? truncatePatch(file.patch) : 'Patch not available.'}`)
   .join('\n\n')}
+${additionalFiles && additionalFiles.length ? `\n\nADDITIONAL REQUESTED FILE CONTENTS:\n${additionalFiles.map((f) => `File: ${f.path}\n${truncatePatch(f.content)}`).join('\n\n')}` : ''}
 `;
 
 function formatLinkedIssues(linkedIssues: LinkedIssue[]): string {
@@ -370,6 +375,7 @@ interface PromptOptions {
   skippedFiles?: string[];
   reviewMode?: import('./types.js').ReviewMode;
   toneMode?: ToneMode;
+  additionalFiles?: Array<{ path: string; content: string }>;
 }
 
 export function buildReviewPrompt({
@@ -381,8 +387,9 @@ export function buildReviewPrompt({
   skippedFiles = [],
   reviewMode = 'both',
   toneMode = 'balanced',
+  additionalFiles,
 }: PromptOptions): string {
-  return promptTemplate({ title, body, linkedIssues, repositoryFiles, changedFiles, skippedFiles, reviewMode, toneMode });
+  return promptTemplate({ title, body, linkedIssues, repositoryFiles, changedFiles, skippedFiles, reviewMode, toneMode, additionalFiles });
 }
 
 export function parseReviewResponse(text: string): ReviewResponse {
@@ -396,7 +403,8 @@ export function parseReviewResponse(text: string): ReviewResponse {
       : [];
     const comments = commentsWithNull.filter((comment): comment is ReviewComment => Boolean(comment));
     const separatePrSuggestions = normalizeStringArray(parsed.separate_pr_suggestions);
-    return { summary, comments, separatePrSuggestions };
+    const requestedFiles = normalizeStringArray(parsed.requested_files ?? parsed.request_files ?? parsed.requestedFiles);
+    return { summary, comments, separatePrSuggestions, requestedFiles };
   } catch {
     const first = trimmed.indexOf('{');
     const last = trimmed.lastIndexOf('}');
@@ -612,7 +620,53 @@ export async function runReview(context: ReviewContext): Promise<void> {
     apiUrl: context.llmApiUrl,
     model: context.llmModel,
   });
-  const response = await client.complete(prompt);
+  // two-stage flow: ask model for a review; if it requests additional files, fetch them and re-run
+  let response = await client.complete(prompt);
+  const maxRounds = 2;
+  let round = 0;
+  async function fetchFileContent(path: string): Promise<string | null> {
+    try {
+      const { data } = await octokit.rest.repos.getContent({ owner: context.owner, repo: context.repo, path, ref: pullRequest.head.sha });
+      if (!('content' in (data as any)) || typeof (data as any).content !== 'string') {
+        return null;
+      }
+      const raw = Buffer.from((data as any).content, 'base64').toString('utf8');
+      const MAX_CHARS = 12000;
+      if (raw.length > MAX_CHARS) {
+        return raw.slice(0, MAX_CHARS) + '\n... [truncated]';
+      }
+      return raw;
+    } catch {
+      return null;
+    }
+  }
+
+  while (round < maxRounds && response.requestedFiles && response.requestedFiles.length) {
+    const uniquePaths = Array.from(new Set(response.requestedFiles.map((p) => p.replace(/^\//, ''))));
+    const additionalFiles: Array<{ path: string; content: string }> = [];
+    for (const p of uniquePaths) {
+      const content = await fetchFileContent(p);
+      if (content) {
+        additionalFiles.push({ path: p, content });
+      }
+    }
+
+    if (!additionalFiles.length) break;
+
+    const followupPrompt = buildReviewPrompt({
+      title: pullRequest.title,
+      body: pullRequest.body,
+      linkedIssues,
+      repositoryFiles,
+      changedFiles,
+      skippedFiles,
+      reviewMode: context.reviewMode,
+      toneMode: context.toneMode,
+      additionalFiles,
+    });
+    response = await client.complete(followupPrompt);
+    round++;
+  }
   const reviewBody = renderSummaryMarkdown(response.summary, response.separatePrSuggestions);
   const commentablePaths = new Set(changedFiles.map((file) => file.path));
   const comments = context.reviewMode === 'summary'

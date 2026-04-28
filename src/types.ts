@@ -27,6 +27,7 @@ export interface ReviewResponse {
   summary: ReviewSummary;
   comments: ReviewComment[];
   separatePrSuggestions: string[];
+  requestedFiles?: string[];
 }
 export interface ReviewContext {
   owner: string;
