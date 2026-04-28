@@ -1,0 +1,26 @@
+{
+  "name": "coderabbit-pr-reviewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/action.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint . --ext .ts"
+  },
+  "bin": {
+    "coderabbit-pr-reviewer": "dist/cli.js"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.0",
+    "@actions/github": "^6.0.0",
+    "@octokit/rest": "^20.0.0",
+    "undici": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^1.5.0",
+    "@types/node": "^20.0.0"
+  }
+}

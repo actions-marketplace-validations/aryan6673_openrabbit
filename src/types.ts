@@ -1,0 +1,25 @@
+export type ReviewMode = 'summary' | 'inline' | 'both';
+export type LLMProvider = 'groq';
+export interface LLMConfig {
+  apiKey: string;
+  apiUrl: string;
+}
+export interface ReviewComment {
+  path: string;
+  line: number;
+  body: string;
+}
+export interface ReviewResponse {
+  review: string;
+  comments: ReviewComment[];
+}
+export interface ReviewContext {
+  owner: string;
+  repo: string;
+  pullNumber: number;
+  githubToken: string;
+  llmProvider: LLMProvider;
+  llmApiUrl: string;
+  llmApiKey: string;
+  reviewMode: ReviewMode;
+}

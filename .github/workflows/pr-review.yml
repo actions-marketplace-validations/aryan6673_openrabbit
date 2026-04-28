@@ -1,0 +1,21 @@
+name: PR review
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run build
+      - uses: .
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          llm_provider: groq
+          llm_api_url: https://api.groq.ai/v1
+          llm_api_key: ${{ secrets.GROQ_API_KEY }}
+          review_mode: both

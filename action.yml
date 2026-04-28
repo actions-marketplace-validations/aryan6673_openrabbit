@@ -1,0 +1,24 @@
+name: Coderabbit PR Reviewer
+description: Self-hosted GitHub Action that generates PR review summaries and inline comments using any LLM provider.
+inputs:
+  github_token:
+    description: GitHub token for PR review actions
+    required: true
+  llm_provider:
+    description: LLM provider key
+    required: false
+    default: groq
+  llm_api_url:
+    description: Base URL for the LLM provider
+    required: false
+    default: https://api.groq.ai/v1
+  llm_api_key:
+    description: API key for the LLM provider
+    required: false
+  review_mode:
+    description: Create summary, inline comments, or both
+    required: false
+    default: both
+runs:
+  using: node16
+  main: dist/action.js
