@@ -177,6 +177,8 @@ When you can improve code, don't just describe the fix — provide it as a GitHu
 // your corrected code here
 \`\`\`
 
+It is strongly recommended to include commit suggestion blocks in inline comments whenever possible — prefer small, single-file suggestion blocks that the author can apply with one click. When providing suggestions, keep them focused, minimal, and safe to apply automatically.
+
 Only suggest code you're confident in. Never suggest refactors that span multiple files in a single suggestion block.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
