@@ -1,4 +1,4 @@
-name: Coderabbit PR Reviewer
+name: OpenRabbit
 description: GitHub Action that generates PR review summaries and inline comments using any LLM provider.
 inputs:
   github_token:
